@@ -21,12 +21,12 @@
   },
   "homepage": "https://github.com/gsbarreto/simple-udp-server-fm7#readme",
   "dependencies": {
-    "@types/express": "^4.17.8",
     "express": "^4.16.4",
     "serialport": "^9.0.1",
     "ts-node-dev": "^1.0.0-pre.62"
   },
   "devDependencies": {
+    "@types/express": "^4.17.8",
     "@types/serialport": "^8.0.1"
   }
 }

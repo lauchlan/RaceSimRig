@@ -4,8 +4,13 @@ const HOST = "0.0.0.0";
 const MPH_MULTIPLIER: number = 2.23694;
 const INITIAL_MAX_SPEED = 120 / MPH_MULTIPLIER; // m/s
 
+const SERIAL_PORT: string = "/dev/cu.usbmodem14201";
+
 const express = require("express");
 const app = express();
+
+import { PortInfo } from "serialport";
+const SerialPort = require("@serialport/stream");
 
 import { CarDashMessage } from "./carDashMessage";
 import { IndexedBuffer } from "./indexedBuffer";
@@ -131,6 +136,11 @@ app.get("/fan/:channel/", function (
   }
 });
 
+app.get("/ports", async function (req: any, res: any) {
+  const ports: Promise<PortInfo[]> = await SerialPort.list();
+  res.send(ports);
+});
+
 app.post("/fan/:channel/", (req: any, res: any) => {
   const channel: string = getChannel(req);
 
@@ -167,7 +177,7 @@ app.listen(8080, () => {
 });
 
 const fanControl: FanControl = new FanControl();
-fanControl.init("/dev/cu.usbmodem14201");
+fanControl.init(SERIAL_PORT);
 
 setInterval(() => {
   let value: number = 0;
