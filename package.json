@@ -1,14 +1,14 @@
 {
-  "name": "simRig",
+  "name": "race-sim-rig",
   "version": "1.0.0",
   "description": "Relay server for Forza7 telemetry, and fan driver for sim rig",
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js",
+    "start": "nodemon server.ts",
     "tsc": "tsc",
     "dev": "ts-node-dev --respawn --transpileOnly ./server.ts",
-    "prod": "tsc && node ./build/server.js"
+    "prod": "tsc && node ./dist/server/server.js"
   },
   "repository": {
     "type": "git",
@@ -21,14 +21,17 @@
   },
   "homepage": "https://github.com/lauchlan/SimRig#readme",
   "dependencies": {
-    "@types/properties-reader": "0.0.2",
     "express": "^4.16.4",
     "properties-reader": "^2.1.1",
-    "serialport": "^9.0.1"
+    "serialport": "^9.0.1",
+    "ws": "^7.3.1"
   },
   "devDependencies": {
+    "@types/properties-reader": "0.0.2",
+    "@types/ws": "^7.2.6",
     "@types/express": "^4.17.8",
     "@types/serialport": "^8.0.1",
+    "nodemon": "^2.0.4",
     "ts-node-dev": "^1.0.0-pre.62",
     "typescript": "^4.0.2"
   }

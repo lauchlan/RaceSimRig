@@ -1,11 +1,5 @@
-const PORT = 20003;
-const HOST = "0.0.0.0";
-
 const MPH_MULTIPLIER: number = 2.23694;
 const INITIAL_MAX_SPEED = 120 / MPH_MULTIPLIER; // m/s
-
-const express = require("express");
-const app = express();
 
 import { PortInfo } from "serialport";
 const SerialPort = require("@serialport/stream");
@@ -15,6 +9,20 @@ import { IndexedBuffer } from "./indexedBuffer";
 import { EchoClient } from "./echoClient";
 import { CarDashServer } from "./carDashServer";
 import { FanControl } from "./fanControl";
+
+import express from "express";
+import * as http from "http";
+import * as WebSocket from "ws";
+
+const app = express();
+
+//initialize a simple http server
+const httpServer = http.createServer(app);
+
+//initialize the WebSocket server instance
+const wss = new WebSocket.Server({ server: httpServer });
+
+let ws: WebSocket | null = null;
 
 app.use(function (
   _req: any,
@@ -29,7 +37,6 @@ app.use(function (
   next();
 });
 
-const server = new CarDashServer(PORT, HOST);
 const echoClient: EchoClient = new EchoClient();
 
 const carDashMessage = new CarDashMessage();
@@ -64,43 +71,6 @@ const fanB = new Fan("B");
 
 let maxSpeedTimeout: NodeJS.Timeout | null = null;
 let backOffTimeout: NodeJS.Timeout | null = null;
-
-server.onMessage((message: Buffer) => {
-  messageBuffer.init(message);
-  echoClient.send(message);
-  carDashMessage.populate(messageBuffer);
-
-  isRaceOn = carDashMessage.isRaceOn;
-
-  if (!carDashMessage.isRaceOn) {
-    if (!maxSpeedTimeout) {
-      maxSpeedTimeout = setTimeout(
-        () => (maxObservedSpeed = INITIAL_MAX_SPEED),
-        90000
-      );
-    }
-
-    if (!backOffTimeout) {
-      backOffTimeout = setInterval(
-        () => (currentSpeed = currentSpeed * 0.9),
-        1000
-      );
-    }
-  } else {
-    if (maxSpeedTimeout) {
-      clearTimeout(maxSpeedTimeout);
-      maxSpeedTimeout = null;
-    }
-
-    if (backOffTimeout) {
-      clearTimeout(backOffTimeout);
-      backOffTimeout = null;
-    }
-
-    currentSpeed = carDashMessage.speed;
-    maxObservedSpeed = Math.max(currentSpeed, maxObservedSpeed);
-  }
-});
 
 const bodyParser = require("body-parser");
 app.use(bodyParser.json());
@@ -229,9 +199,69 @@ function init() {
 
   const serialPort: PropertiesReader.Value | null = properties.get("fans.port");
 
+  const serverPort: PropertiesReader.Value | null = properties.get(
+    "server.port"
+  );
+
+  const server = new CarDashServer(serverPort as number, "0.0.0.0");
+
+  server.onMessage((message: Buffer) => {
+    messageBuffer.init(message);
+    echoClient.send(message);
+    carDashMessage.populate(messageBuffer);
+
+    isRaceOn = carDashMessage.isRaceOn;
+
+    if (!carDashMessage.isRaceOn) {
+      if (!maxSpeedTimeout) {
+        maxSpeedTimeout = setTimeout(
+          () => (maxObservedSpeed = INITIAL_MAX_SPEED),
+          90000
+        );
+      }
+
+      if (!backOffTimeout) {
+        backOffTimeout = setInterval(
+          () => (currentSpeed = currentSpeed * 0.9),
+          1000
+        );
+      }
+    } else {
+      if (maxSpeedTimeout) {
+        clearTimeout(maxSpeedTimeout);
+        maxSpeedTimeout = null;
+      }
+
+      if (backOffTimeout) {
+        clearTimeout(backOffTimeout);
+        backOffTimeout = null;
+      }
+
+      currentSpeed = carDashMessage.speed;
+      maxObservedSpeed = Math.max(currentSpeed, maxObservedSpeed);
+    }
+  });
+
   server.init();
   echoClient.connect(port as number, ip as string);
   fanControl.init(serialPort as string);
+
+  wss.on("connection", (socket: WebSocket) => {
+    ws = socket;
+    socket.on("message", (message: string) => {
+      console.log("[Web Socket] received: %s", message);
+    });
+  });
+
+  //start our server
+
+  httpServer.listen(process.env.PORT || 8999, () => {
+    console.log(
+      `Server started on port ${
+        (httpServer.address() as WebSocket.AddressInfo).port
+      } :)`
+    );
+  });
 
   app.listen(8080, () => {
     console.log("[Express Server] ON");
@@ -252,6 +282,19 @@ function init() {
     fanB.setSpeed(value);
 
     fanControl.write(fanA.currentSpeed, fanB.currentSpeed);
+
+    ws?.send(
+      JSON.stringify({
+        fanA,
+        fanB,
+        currentSpeed,
+        maxObservedSpeed,
+        gear: carDashMessage.gear,
+        maxRpm: carDashMessage.engineMaxRpm,
+        currentRpm: carDashMessage.currentEngineRpm,
+        idleRpm: carDashMessage.engineIdleRpm,
+      })
+    );
   }, 250);
 }
 

@@ -80,7 +80,7 @@ typings/
 # FuseBox cache
 .fusebox/
 
-build
+dist
 .vscode
 server.properties
 # End of https://www.gitignore.io/api/node
