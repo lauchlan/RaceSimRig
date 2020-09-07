@@ -1,0 +1,204 @@
+const PORT = 20003;
+const HOST = "0.0.0.0";
+
+const MPH_MULTIPLIER: number = 2.23694;
+const INITIAL_MAX_SPEED = 120 / MPH_MULTIPLIER; // m/s
+
+const express = require("express");
+const app = express();
+
+import { CarDashMessage } from "./carDashMessage";
+import { IndexedBuffer } from "./indexedBuffer";
+import { EchoClient } from "./echoClient";
+import { CarDashServer } from "./carDashServer";
+import { FanControl } from "./fanControl";
+
+app.use(function (
+  _req: any,
+  res: { header: (arg0: string, arg1: string) => void },
+  next: () => void
+) {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept"
+  );
+  next();
+});
+
+const server = new CarDashServer(PORT, HOST);
+const echoClient: EchoClient = new EchoClient();
+echoClient.connect(20003, "10.252.1.85");
+
+const carDashMessage = new CarDashMessage();
+var messageBuffer: IndexedBuffer = new IndexedBuffer();
+
+var maxObservedSpeed: number = INITIAL_MAX_SPEED;
+var currentSpeed: number = 0;
+var isRaceOn: boolean = false;
+
+class Fan {
+  name: string;
+  currentSpeed = 0;
+  override = false;
+
+  constructor(name: string) {
+    this.name = name;
+  }
+
+  setSpeed(speed: number) {
+    if (!this.override) {
+      this.currentSpeed = speed;
+    }
+  }
+
+  strength() {
+    return Math.round((this.currentSpeed / 255) * 100);
+  }
+}
+
+const fanA = new Fan("A");
+const fanB = new Fan("B");
+
+let maxSpeedTimeout: NodeJS.Timeout | null = null;
+let backOffTimeout: NodeJS.Timeout | null = null;
+
+server.onMessage((message: Buffer) => {
+  messageBuffer.init(message);
+  echoClient.send(message);
+  carDashMessage.populate(messageBuffer);
+
+  isRaceOn = carDashMessage.isRaceOn;
+
+  if (!carDashMessage.isRaceOn) {
+    if (!maxSpeedTimeout) {
+      maxSpeedTimeout = setTimeout(
+        () => (maxObservedSpeed = INITIAL_MAX_SPEED),
+        90000
+      );
+    }
+
+    if (!backOffTimeout) {
+      backOffTimeout = setInterval(
+        () => (currentSpeed = currentSpeed * 0.9),
+        1000
+      );
+    }
+  } else {
+    if (maxSpeedTimeout) {
+      clearTimeout(maxSpeedTimeout);
+      maxSpeedTimeout = null;
+    }
+
+    if (backOffTimeout) {
+      clearTimeout(backOffTimeout);
+      backOffTimeout = null;
+    }
+
+    currentSpeed = carDashMessage.speed;
+    maxObservedSpeed = Math.max(currentSpeed, maxObservedSpeed);
+  }
+});
+
+const bodyParser = require("body-parser");
+app.use(bodyParser.json());
+app.get("/", (req: any, res: { send: (val: string) => any }) => {
+  return res.send(statusMsg());
+});
+
+app.get("/data", function (req: any, res: { send: (arg0: {}) => any }) {
+  return res.send(carDashMessage);
+});
+
+app.get("/fan/:channel/", function (
+  req: any,
+  res: { send: (arg0: {}) => any }
+) {
+  const channel: string = getChannel(req);
+
+  let fan: Fan | null = null;
+
+  if (channel == "a") {
+    fan = fanA;
+  } else if (channel == "b") {
+    fan = fanB;
+  }
+
+  if (fan) {
+    return res.send("" + fan.currentSpeed);
+  } else {
+    return res.send(`unknown channel ${channel}`);
+  }
+});
+
+app.post("/fan/:channel/", (req: any, res: any) => {
+  const channel: string = getChannel(req);
+
+  console.log(req.body);
+  let speed = req.body?.speed;
+
+  let fan: Fan | null = null;
+
+  if (channel == "a") {
+    fan = fanA;
+  } else if (channel == "b") {
+    fan = fanB;
+  }
+
+  console.log(fan);
+
+  if (fan) {
+    if (speed == -1) {
+      fan.currentSpeed = 0;
+      fan.override = false;
+    } else {
+      fan.currentSpeed = speed;
+      fan.override = true;
+    }
+
+    console.log(fan);
+    fanControl.write(fanA.currentSpeed, fanB.currentSpeed);
+    res.json({ channel, speed });
+  }
+});
+
+app.listen(8080, () => {
+  console.log("[Express Server] ON");
+});
+
+const fanControl: FanControl = new FanControl();
+fanControl.init("/dev/cu.usbmodem14201");
+
+setInterval(() => {
+  let value: number = 0;
+
+  if (isRaceOn || backOffTimeout) {
+    value = Math.floor((currentSpeed / maxObservedSpeed) * 255);
+  }
+
+  fanA.setSpeed(value);
+  fanB.setSpeed(value);
+
+  fanControl.write(fanA.currentSpeed, fanB.currentSpeed);
+}, 250);
+
+setInterval(() => {
+  console.log(statusMsg());
+}, 5000);
+
+function getChannel(req: any): string {
+  return req.params.channel
+    ? req.params.channel.toLowerCase()
+    : req.params.channel;
+}
+
+function statusMsg(): string {
+  const speedMph: number = Math.round(carDashMessage.speed * MPH_MULTIPLIER);
+  const maxSpeedMph: number = Math.round(maxObservedSpeed * MPH_MULTIPLIER);
+
+  return `[Status] Race On:${
+    carDashMessage.isRaceOn
+  }, Speed: ${speedMph}mph, Max Speed ${maxSpeedMph} Gear:${
+    carDashMessage.gear
+  }, fan A: ${fanA.strength()}%, fan B: ${fanB.strength()}%`;
+}
