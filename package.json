@@ -1,7 +1,7 @@
 {
-  "name": "simple-udp-server-fm7",
+  "name": "simRig",
   "version": "1.0.0",
-  "description": "- NodeJS  - NPM",
+  "description": "Relay server for Forza7 telemetry, and fan driver for sim rig",
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -12,15 +12,16 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/gsbarreto/simple-udp-server-fm7.git"
+    "url": "git+https://github.com/lauchlan/SimRig"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/gsbarreto/simple-udp-server-fm7/issues"
+    "url": "https://github.com/lauchlan/SimRig/issues"
   },
-  "homepage": "https://github.com/gsbarreto/simple-udp-server-fm7#readme",
+  "homepage": "https://github.com/lauchlan/SimRig#readme",
   "dependencies": {
+    "@types/properties-reader": "0.0.2",
     "express": "^4.16.4",
     "properties-reader": "^2.1.1",
     "serialport": "^9.0.1"

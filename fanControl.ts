@@ -5,13 +5,23 @@ export class FanControl {
   port?: SerialPort;
 
   private isConnected: boolean = false;
-  private isRetrying: boolean = false;
   private device: string = "";
+  public timeoutHandler: NodeJS.Timeout | null = null;
 
   init(device: string) {
+    if (this.port && this.isConnected) {
+      this.port.close();
+      this.isConnected = false;
+    }
+
     this.device = device;
     console.log("[Fan Control] initialising device", device);
-    this.isRetrying = false;
+
+    if (this.timeoutHandler) {
+      clearTimeout(this.timeoutHandler);
+      this.timeoutHandler = null;
+    }
+
     this.port = new SerialPort(device, { baudRate: 9600 });
 
     this.port.on("open", () => {
@@ -34,9 +44,9 @@ export class FanControl {
     this.isConnected = false;
 
     const controller: FanControl = this;
-    if (!this.isRetrying) {
-      this.isRetrying = true;
-      setTimeout(() => {
+    if (!this.timeoutHandler) {
+      controller.timeoutHandler = setTimeout(() => {
+        console.log("[Fan Control] Retrying serial connection");
         controller.init(this.device);
       }, 5000);
     }

@@ -104,6 +104,8 @@ server.onMessage((message: Buffer) => {
 
 const bodyParser = require("body-parser");
 app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+
 app.get("/", (req: any, res: { send: (val: string) => any }) => {
   return res.send(statusMsg());
 });
@@ -134,9 +136,33 @@ app.get("/fan/:channel/", function (
 });
 
 app.get("/ports", async function (req: any, res: any) {
-  const ports: Promise<PortInfo[]> = await SerialPort.list();
-  res.send(ports);
+  const ports: PortInfo[] = await SerialPort.list();
+  const portValues = ports.map((port) => {
+    return `<option value="${port.path}">${port.path}</option>`;
+  });
+
+  const form: string = `<form action="/port/" method="post"><select id='path' name='path'>${portValues.join(
+    "\n"
+  )}</select><input type="submit"></form>`;
+  res.send(form);
 });
+
+app.post("/port", (req: any, res: any) => {
+  const port: string = req.body.path as string;
+
+  res.send(`port set to ${port}`);
+
+  properties.set("fans.port", port);
+  properties.save("server.properties");
+
+  fanControl.init(port as string);
+});
+
+function getChannel(req: any): string {
+  return req.params.channel
+    ? req.params.channel.toLowerCase()
+    : req.params.channel;
+}
 
 app.post("/fan/:channel/", (req: any, res: any) => {
   const channel: string = getChannel(req);
@@ -171,12 +197,6 @@ app.post("/fan/:channel/", (req: any, res: any) => {
 
 const fanControl: FanControl = new FanControl();
 
-function getChannel(req: any): string {
-  return req.params.channel
-    ? req.params.channel.toLowerCase()
-    : req.params.channel;
-}
-
 function statusMsg(): string {
   const speedMph: number = Math.round(carDashMessage.speed * MPH_MULTIPLIER);
   const maxSpeedMph: number = Math.round(maxObservedSpeed * MPH_MULTIPLIER);
@@ -188,11 +208,13 @@ function statusMsg(): string {
   }, fan A: ${fanA.strength()}%, fan B: ${fanB.strength()}%`;
 }
 
-function init() {
-  var propertiesReader = require("properties-reader");
+const propertiesReader = require("properties-reader");
+import PropertiesReader from "properties-reader";
+var properties: PropertiesReader.Reader;
 
+function init() {
   try {
-    var properties = propertiesReader("server.properties");
+    properties = propertiesReader("server.properties");
   } catch {
     console.log(
       "Failed to read properties file. Please ensure that server.properties exists and is valid"
@@ -200,14 +222,16 @@ function init() {
     process.exit(1);
   }
 
-  const ip: string = properties.get("relay.client.ip");
-  const port: number = properties.get("relay.client.port");
+  const ip: PropertiesReader.Value | null = properties.get("relay.client.ip");
+  const port: PropertiesReader.Value | null = properties.get(
+    "relay.client.port"
+  );
 
-  const serialPort: string = properties.get("fans.port");
+  const serialPort: PropertiesReader.Value | null = properties.get("fans.port");
 
   server.init();
-  echoClient.connect(port, ip);
-  fanControl.init(serialPort);
+  echoClient.connect(port as number, ip as string);
+  fanControl.init(serialPort as string);
 
   app.listen(8080, () => {
     console.log("[Express Server] ON");
