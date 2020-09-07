@@ -6,7 +6,13 @@ export class CarDashServer {
   constructor(port: number, host: string) {
     this.server = dgram.createSocket("udp4");
     this.server.bind(port, host);
+  }
 
+  onMessage(callback: (message: Buffer) => void) {
+    this.server.on("message", callback);
+  }
+
+  init() {
     const serverInstance: any = this.server;
 
     this.server.on("listening", function () {
@@ -18,9 +24,5 @@ export class CarDashServer {
           address.port
       );
     });
-  }
-
-  onMessage(callback: (message: Buffer) => void) {
-    this.server.on("message", callback);
   }
 }

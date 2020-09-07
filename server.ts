@@ -4,8 +4,6 @@ const HOST = "0.0.0.0";
 const MPH_MULTIPLIER: number = 2.23694;
 const INITIAL_MAX_SPEED = 120 / MPH_MULTIPLIER; // m/s
 
-const SERIAL_PORT: string = "/dev/cu.usbmodem14201";
-
 const express = require("express");
 const app = express();
 
@@ -33,7 +31,6 @@ app.use(function (
 
 const server = new CarDashServer(PORT, HOST);
 const echoClient: EchoClient = new EchoClient();
-echoClient.connect(20003, "10.252.1.85");
 
 const carDashMessage = new CarDashMessage();
 var messageBuffer: IndexedBuffer = new IndexedBuffer();
@@ -172,29 +169,7 @@ app.post("/fan/:channel/", (req: any, res: any) => {
   }
 });
 
-app.listen(8080, () => {
-  console.log("[Express Server] ON");
-});
-
 const fanControl: FanControl = new FanControl();
-fanControl.init(SERIAL_PORT);
-
-setInterval(() => {
-  let value: number = 0;
-
-  if (isRaceOn || backOffTimeout) {
-    value = Math.floor((currentSpeed / maxObservedSpeed) * 255);
-  }
-
-  fanA.setSpeed(value);
-  fanB.setSpeed(value);
-
-  fanControl.write(fanA.currentSpeed, fanB.currentSpeed);
-}, 250);
-
-setInterval(() => {
-  console.log(statusMsg());
-}, 5000);
 
 function getChannel(req: any): string {
   return req.params.channel
@@ -212,3 +187,48 @@ function statusMsg(): string {
     carDashMessage.gear
   }, fan A: ${fanA.strength()}%, fan B: ${fanB.strength()}%`;
 }
+
+function init() {
+  var propertiesReader = require("properties-reader");
+
+  try {
+    var properties = propertiesReader("server.properties");
+  } catch {
+    console.log(
+      "Failed to read properties file. Please ensure that server.properties exists and is valid"
+    );
+    process.exit(1);
+  }
+
+  const ip: string = properties.get("relay.client.ip");
+  const port: number = properties.get("relay.client.port");
+
+  const serialPort: string = properties.get("fans.port");
+
+  server.init();
+  echoClient.connect(port, ip);
+  fanControl.init(serialPort);
+
+  app.listen(8080, () => {
+    console.log("[Express Server] ON");
+  });
+
+  setInterval(() => {
+    console.log(statusMsg());
+  }, 5000);
+
+  setInterval(() => {
+    let value: number = 0;
+
+    if (isRaceOn || backOffTimeout) {
+      value = Math.floor((currentSpeed / maxObservedSpeed) * 255);
+    }
+
+    fanA.setSpeed(value);
+    fanB.setSpeed(value);
+
+    fanControl.write(fanA.currentSpeed, fanB.currentSpeed);
+  }, 250);
+}
+
+init();
