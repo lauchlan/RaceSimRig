@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="stylesheet" href="css/materialize.css" />
+    <style>
+        @font-face {
+            font-family: "digital";
+            src: url("ttf/digital.ttf");
+        }
+
+        body {
+            font-family: "digital";
+            height: 100vh;
+        }
+
+        h1 {
+            font-size:180px;
+        }
+
+        h2 {
+            font-size:100px;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            border: none;
+            height: 24px;
+            width: 24px;
+            background: #ff0000;
+            background-color: #ff0000;
+            margin: -12px 0 0 0;
+            
+
+        }
+        input[type=range] + .thumb {
+            position: absolute;
+            top: -10px;
+            background-color:#ff0000;
+        }
+
+
+        input[type=range] + .thumb.active .value {
+            color: #fff;
+            margin-left: 3px;
+            margin-top: 3px;
+            font-size: 40px;
+        }
+    </style>
+  </head>
+  <body class="grey darken-4">
+    <div class="row" style="height: 50vh">
+      <div class="col s4  valign-wrapper" style="height: 100%">
+        <div class="section white-text" style="width: 100%">
+          <h2 class="center-align">
+            <span id="speed">speed</span>
+            <span style="font-size: medium">MPH</span>
+          </h1>
+        </div>
+      </div>
+
+      <div class="col s4 valign-wrapper" style="height: 100%">
+        <div class="section white-text" style="width: 100%">
+          <h1 class="center-align">
+            <span id="gear">gear</span>
+          </h1>
+        </div>
+      </div>
+      <div
+        class="col s4 valign-wrapper"
+        style="height: 100%; font-size: 50px"
+      >
+        <div class="section white-text center-align" style="width:100%">
+          <span id="rpm">rpm</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="height: 50vh">
+      <div class="col s6  valign-wrapper" style="height:100%">
+        <div class="section white-text" style="width:100%">
+          <h3 class="center-align">
+            <span id="fanA"></span>
+            <form action="#">
+                <p class="range-field">
+                  <input type="range" id="fanASelect" min="0" max="100" onchange="fanChange('a', document.getElementById('fanASelect').value)" />
+                </p>
+              </form>
+          </h5>
+        </div>
+      </div>
+      <div class="col s6 valign-wrapper" style="height:100%">
+        <div class="section white-text" style="width:100%">
+          <h3 class="center-align">
+            <span id="fanB"></span>
+            <form action="#">
+                <p class="range-field" style="font-size:50px">
+                  <input type="range" id="fanBSelect" min="0" max="100" onchange="fanChange('b', document.getElementById('fanBSelect').value)"/>
+                </p>
+              </form>
+          </h5>
+        </div>
+      </div>
+    </div>
+  </body>
+
+  <script>
+    function WebSocketTest() {
+      if ("WebSocket" in window) {
+        // Let us open a web socket
+        var ws = new WebSocket("ws://localhost:8999/");
+
+        ws.onopen = function () {
+          console.log("Socket opened");
+        };
+
+        ws.onmessage = function (evt) {
+          var received_msg = evt.data;
+
+          var data = JSON.parse(evt.data);
+
+          console.log(data);
+          document.getElementById("fanA").innerHTML =
+            Math.round(data.fanA.strength) + "%";
+          document.getElementById("fanB").innerHTML =
+            Math.round(data.fanB.strength) + "%";
+          document.getElementById("gear").innerHTML = data.gear;
+          document.getElementById("speed").innerHTML = Math.round(
+            data.currentSpeed * 2.23694
+          );
+          document.getElementById("rpm").innerHTML =
+            Math.round(data.currentRpm) + "/" + Math.round(data.maxRpm);
+
+
+           if (data.fanA.override) {
+            document.getElementById('fanASelect').value = data.fanA.strength;
+           }
+           else {
+            document.getElementById('fanASelect').value = 0;
+           }
+           
+
+           if (data.fanB.override) {
+            document.getElementById('fanBSelect').value = data.fanB.strength;
+           }
+           else {
+            document.getElementById('fanBSelect').value = 0;
+           }
+        };
+
+        ws.onclose = function () {
+          // websocket is closed.
+          console.log("socket closed");
+        };
+      } else {
+        // The browser doesn't support WebSocket
+        console.error("WebSocket NOT supported by your Browser!");
+      }
+    }
+
+    function fanChange(fan,value) {
+
+        if (value == 0) {
+            value = -1;
+        }
+        else {
+            value = Math.round((value/100) * 255);
+        }
+
+        console.log(fan,value);
+        fetch(`http://localhost:8080/fan/${fan}/`,
+         {
+            method:'POST',
+            headers: {'content-type': 'application/json'},
+           body: JSON.stringify({speed:value})
+        });
+    }
+   // WebSocketTest();
+  </script>
+  <script type="text/javascript" src="js/materialize.js"></script>
+</html>

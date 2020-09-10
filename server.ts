@@ -50,6 +50,7 @@ class Fan {
   name: string;
   currentSpeed = 0;
   override = false;
+  strength: number = 0;
 
   constructor(name: string) {
     this.name = name;
@@ -58,11 +59,8 @@ class Fan {
   setSpeed(speed: number) {
     if (!this.override) {
       this.currentSpeed = speed;
+      this.strength = Math.round((this.currentSpeed / 255) * 100);
     }
-  }
-
-  strength() {
-    return Math.round((this.currentSpeed / 255) * 100);
   }
 }
 
@@ -152,10 +150,11 @@ app.post("/fan/:channel/", (req: any, res: any) => {
 
   if (fan) {
     if (speed == -1) {
-      fan.currentSpeed = 0;
       fan.override = false;
+      fan.setSpeed(0);
     } else {
-      fan.currentSpeed = speed;
+      fan.override = false;
+      fan.setSpeed(speed);
       fan.override = true;
     }
 
@@ -171,11 +170,7 @@ function statusMsg(): string {
   const speedMph: number = Math.round(carDashMessage.speed * MPH_MULTIPLIER);
   const maxSpeedMph: number = Math.round(maxObservedSpeed * MPH_MULTIPLIER);
 
-  return `[Status] Race On:${
-    carDashMessage.isRaceOn
-  }, Speed: ${speedMph}mph, Max Speed ${maxSpeedMph} Gear:${
-    carDashMessage.gear
-  }, fan A: ${fanA.strength()}%, fan B: ${fanB.strength()}%`;
+  return `[Status] Race On:${carDashMessage.isRaceOn}, Speed: ${speedMph}mph, Max Speed ${maxSpeedMph} Gear:${carDashMessage.gear}, fan A: ${fanA.strength}%, fan B: ${fanB.strength}%`;
 }
 
 const propertiesReader = require("properties-reader");
