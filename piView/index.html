@@ -121,9 +121,9 @@
 
           console.log(data);
           document.getElementById("fanA").innerHTML =
-            Math.round(data.fanA.strength) + "%";
+            Math.round(data.fanA.percentageStrength) + "%";
           document.getElementById("fanB").innerHTML =
-            Math.round(data.fanB.strength) + "%";
+            Math.round(data.fanB.percentageStrength) + "%";
           document.getElementById("gear").innerHTML = data.gear;
           document.getElementById("speed").innerHTML = Math.round(
             data.currentSpeed * 2.23694
@@ -133,7 +133,7 @@
 
 
            if (data.fanA.override) {
-            document.getElementById('fanASelect').value = data.fanA.strength;
+            document.getElementById('fanASelect').value = data.fanA.percentageStrength;
            }
            else {
             document.getElementById('fanASelect').value = 0;
@@ -141,7 +141,7 @@
            
 
            if (data.fanB.override) {
-            document.getElementById('fanBSelect').value = data.fanB.strength;
+            document.getElementById('fanBSelect').value = data.fanB.percentageStrength;
            }
            else {
             document.getElementById('fanBSelect').value = 0;
