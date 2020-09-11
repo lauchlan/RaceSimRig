@@ -48,7 +48,7 @@ export class FanControl {
       controller.timeoutHandler = setTimeout(() => {
         console.log("[Fan Control] Retrying serial connection");
         controller.init(this.device);
-      }, 5000);
+      }, 30000);
     }
   }
 

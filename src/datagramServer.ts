@@ -1,18 +1,20 @@
 var dgram = require("dgram");
 
-export class CarDashServer {
+export class DatagramServer {
   server: any;
 
   constructor(port: number, host: string) {
     this.server = dgram.createSocket("udp4");
     this.server.bind(port, host);
+
+    this.init();
   }
 
   onMessage(callback: (message: Buffer) => void) {
     this.server.on("message", callback);
   }
 
-  init() {
+  private init() {
     const serverInstance: any = this.server;
 
     this.server.on("listening", function () {

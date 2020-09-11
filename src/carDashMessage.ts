@@ -15,10 +15,10 @@ export interface Tyres {
 
 export class CarDashMessage {
   isRaceOn: boolean = false;
-  timestampMS: Number = NaN;
-  engineMaxRpm: Number = NaN;
-  engineIdleRpm: Number = NaN;
-  currentEngineRpm: Number = NaN;
+  timestampMS: number = NaN;
+  engineMaxRpm: number = NaN;
+  engineIdleRpm: number = NaN;
+  currentEngineRpm: number = NaN;
 
   acceleration: Triple = { x: NaN, y: NaN, z: NaN }; //In the car's local space; X = right, Y = up, Z = forward
   velocity: Triple = { x: NaN, y: NaN, z: NaN }; //In the car's local space; X = right, Y = up, Z = forward
