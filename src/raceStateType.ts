@@ -47,8 +47,8 @@ export class RaceState {
 
       if (!this.spinDownFansTimeout) {
         this.spinDownFansTimeout = setInterval(() => {
-          this.fanA.setSpeed(this.fanA.pwmSpeed * 0.9);
-          this.fanB.setSpeed(this.fanB.pwmSpeed * 0.9);
+          this.fanA.setSpeed(Math.round(this.fanA.pwmSpeed * 0.9));
+          this.fanB.setSpeed(Math.round(this.fanB.pwmSpeed * 0.9));
         }, 1000);
       }
     } else {
