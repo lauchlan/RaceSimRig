@@ -1,15 +1,13 @@
 import express from "express";
 const bodyParser = require("body-parser");
 
-import { Fan } from "./fanType";
-import { FanControl } from "./fanControl";
-
 const SerialPort = require("@serialport/stream");
 import { PortInfo } from "serialport";
-import { CarDashMessage } from "./carDashMessage";
 
 import PropertiesReader from "properties-reader";
-import { RaceState } from "./raceStateType";
+
+import { RaceState } from "../model/raceStateType";
+import { Fan } from "../model/fanType";
 
 export class WebServer {
   app = express();

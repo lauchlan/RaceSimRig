@@ -15,8 +15,6 @@ export class WebSocketServer {
       });
     });
 
-    //start our server
-
     httpServer.listen(process.env.PORT || 8999, () => {
       console.log(
         `Server started on port ${

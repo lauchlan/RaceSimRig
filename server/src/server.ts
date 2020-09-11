@@ -1,13 +1,12 @@
-import { CarDashMessage } from "./carDashMessage";
-import { IndexedBuffer } from "./indexedBuffer";
-import { EchoClient } from "./echoClient";
-import { DatagramServer } from "./datagramServer";
-import { FanControl } from "./fanControl";
+import { CarDashMessage } from "./model/carDashMessage";
+import { IndexedBuffer } from "./model/indexedBuffer";
+import { EchoClient } from "./network/echoClient";
+import { DatagramServer } from "./network/datagramServer";
+import { FanControl } from "./controller/fanControl";
 
-import { Fan } from "./fanType";
-import { WebServer } from "./webServer";
-import { WebSocketServer } from "./webSocketServer";
-import { RaceState } from "./raceStateType";
+import { WebServer } from "./network/webServer";
+import { WebSocketServer } from "./network/webSocketServer";
+import { RaceState } from "./model/raceStateType";
 
 const propertiesReader = require("properties-reader");
 import PropertiesReader from "properties-reader";
