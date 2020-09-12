@@ -29,6 +29,10 @@ Run using
 
 View avilable ports by hitting <http://localhost:8080/ports>, which can also save your selection
 
+If you want to run up the server with a replay of sample data you can do so by running
+
+    npm run prod -- -t
+
 #### Attribution
 
 ##### UDP code for reading dash messages inspired by Gabriel Barreto's [simple udp server](https://github.com/gsbarreto/simple-udp-server-fm7)

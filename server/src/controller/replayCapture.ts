@@ -1,16 +1,17 @@
 import { Observable, Observer, Subject } from "rxjs";
 import fs from "fs";
-import { IndexedBuffer } from "../model/indexedBuffer";
-import { CarDashMessage } from "../model/carDashMessage";
 
-export function getCaptureStream(delay = 25): Observable<Buffer> {
+export function getCaptureStream(
+  filePath: string,
+  delay = 25
+): Observable<Buffer> {
   const MSG_SIZE = 311;
   const buffer = Buffer.alloc(MSG_SIZE);
 
   const msg$ = new Subject<Buffer>();
 
   function readFile() {
-    fs.open("capture.bin", "r", function (err, fd) {
+    fs.open(filePath, "r", function (err, fd) {
       if (err) {
         msg$.error(err);
         return;

@@ -25,7 +25,7 @@ const propertiesReader = require("properties-reader");
 import PropertiesReader from "properties-reader";
 import { getCaptureStream } from "./controller/replayCapture";
 
-async function init() {
+async function init(useTestData: boolean) {
   let properties: PropertiesReader.Reader = openPropertiesFile();
   const { udpServerPort, relayPort, relayIp, serialPort } = readProperties(
     properties
@@ -45,8 +45,11 @@ async function init() {
 
   const udpServer = new DatagramServer(udpServerPort, "0.0.0.0");
 
-  const capture$ = new Observable<Buffer>();
-  null; //getCaptureStream();
+  let capture$ = new Observable<Buffer>();
+
+  if (useTestData) {
+    capture$ = getCaptureStream("testData/capture.bin");
+  }
 
   const buffer$ = merge(udpServer.datagram$, capture$);
 
@@ -116,4 +119,15 @@ function readProperties(properties: PropertiesReader.Reader) {
   return { udpServerPort, relayPort, relayIp, serialPort };
 }
 
-init();
+const yargs = require("yargs");
+
+const argv = yargs
+  .option("useTestData", {
+    alias: "t",
+    description: "play capture data",
+    type: "boolean",
+  })
+  .help()
+  .alias("help", "h").argv;
+
+init(argv.useTestData);
