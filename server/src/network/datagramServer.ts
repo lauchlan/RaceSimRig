@@ -1,17 +1,16 @@
-var dgram = require("dgram");
+const dgram = require("dgram");
+
+import { Observable, Observer, Subject } from "rxjs";
 
 export class DatagramServer {
-  server: any;
+  private server: any;
+  datagram$: Subject<Buffer> = new Subject<Buffer>();
 
   constructor(port: number, host: string) {
     this.server = dgram.createSocket("udp4");
     this.server.bind(port, host);
 
     this.init();
-  }
-
-  onMessage(callback: (message: Buffer) => void) {
-    this.server.on("message", callback);
   }
 
   private init() {
@@ -26,5 +25,8 @@ export class DatagramServer {
           address.port
       );
     });
+
+    this.server.on("message", (val: Buffer) => this.datagram$.next(val));
+    this.server.on("error", (err: any) => this.datagram$.error(err));
   }
 }

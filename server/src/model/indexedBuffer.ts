@@ -1,10 +1,10 @@
 import { Triple, Tyres } from "./carDashMessage.js";
 
 export class IndexedBuffer {
-  private message: Buffer = Buffer.alloc(1);
-  private position: number = 0;
+  private message: Buffer;
+  private position: number;
 
-  init(msg: Buffer) {
+  constructor(msg: Buffer) {
     this.message = msg;
     this.position = 0;
   }

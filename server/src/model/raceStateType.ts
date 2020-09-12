@@ -22,7 +22,7 @@ export class RaceState {
   idleRpm: number = 0;
 
   processNewMessage(carDashMessage: CarDashMessage) {
-    const isRaceOn = carDashMessage.isRaceOn;
+    this.isRaceOn = carDashMessage.isRaceOn;
 
     this.speed = carDashMessage.speed;
     this.gear = carDashMessage.gear;
@@ -31,7 +31,7 @@ export class RaceState {
     this.currentRpm = carDashMessage.currentEngineRpm;
     this.idleRpm = carDashMessage.engineIdleRpm;
 
-    if (!isRaceOn) {
+    if (!this.isRaceOn) {
       if (!this.resetRaceTimeout) {
         this.resetRaceTimeout = setTimeout(() => {
           this.maxObservedSpeed = this.INITIAL_MAX_SPEED;

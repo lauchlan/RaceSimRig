@@ -8,81 +8,112 @@ import { WebServer } from "./network/webServer";
 import { WebSocketServer } from "./network/webSocketServer";
 import { RaceState } from "./model/raceStateType";
 
+import { interval, Observable, Observer, from, of, merge } from "rxjs";
+import {
+  throttleTime,
+  filter,
+  map,
+  delayWhen,
+  mergeMap,
+  concatMap,
+  delay,
+} from "rxjs/operators";
+
+import fs from "fs";
+
 const propertiesReader = require("properties-reader");
 import PropertiesReader from "properties-reader";
+import { getCaptureStream } from "./controller/replayCapture";
 
-function init() {
-  let properties: PropertiesReader.Reader;
-  const { serverPort, port, ip, serialPort } = readProperties();
+async function init() {
+  let properties: PropertiesReader.Reader = openPropertiesFile();
+  const { udpServerPort, relayPort, relayIp, serialPort } = readProperties(
+    properties
+  );
 
   const echoClient: EchoClient = new EchoClient();
   const raceState = new RaceState();
 
-  const carDashMessage = new CarDashMessage();
-  var messageBuffer: IndexedBuffer = new IndexedBuffer();
-
   const webServer = new WebServer(raceState);
-  const udpServer = new DatagramServer(serverPort, "0.0.0.0");
 
-  udpServer.onMessage((message: Buffer) => {
-    echoClient.send(message);
+  webServer.onPortChange((devicePort) => {
+    properties.set("fans.port", devicePort);
+    properties.save("server.properties");
 
-    messageBuffer.init(message);
-    carDashMessage.populate(messageBuffer);
-
-    raceState.processNewMessage(carDashMessage);
+    fanControl.init(devicePort as string);
   });
 
-  echoClient.connect(port as number, ip as string);
+  const udpServer = new DatagramServer(udpServerPort, "0.0.0.0");
+
+  const capture$ = new Observable<Buffer>();
+  null; //getCaptureStream();
+
+  const buffer$ = merge(udpServer.datagram$, capture$);
+
+  buffer$.subscribe((message: Buffer) => {
+    echoClient.send(message);
+  });
+
+  buffer$
+    .pipe(throttleTime(250))
+    .pipe(
+      map((buffer) => {
+        const messageBuffer: IndexedBuffer = new IndexedBuffer(buffer);
+        const carDashMessage = new CarDashMessage(messageBuffer);
+
+        return carDashMessage;
+      })
+    )
+    .subscribe((carDashMessage: CarDashMessage) => {
+      raceState.processNewMessage(carDashMessage);
+
+      fanControl.write(raceState.fanA.pwmSpeed, raceState.fanB.pwmSpeed);
+
+      webSocketServer.send({
+        fanA: raceState.fanA,
+        fanB: raceState.fanB,
+        currentSpeed: raceState.speed,
+        maxObservedSpeed: raceState.maxObservedSpeed,
+        gear: raceState.gear,
+        maxRpm: raceState.maxRpm,
+        currentRpm: raceState.currentRpm,
+        idleRpm: raceState.idleRpm,
+      });
+    });
+
+  echoClient.connect(relayPort, relayIp);
 
   const fanControl: FanControl = new FanControl();
   fanControl.init(serialPort as string);
 
   const webSocketServer = new WebSocketServer(webServer.app);
 
-  webServer.onPortChange((port) => {
-    properties.set("fans.port", port);
-    properties.save("server.properties");
+  const statusStream = interval(5000).subscribe(() =>
+    console.log(raceState.statusMsg())
+  );
+}
 
-    fanControl.init(port as string);
-  });
-
-  setInterval(() => {
-    console.log(raceState.statusMsg());
-  }, 5000);
-
-  setInterval(() => {
-    fanControl.write(raceState.fanA.pwmSpeed, raceState.fanB.pwmSpeed);
-
-    webSocketServer.send({
-      fanA: raceState.fanA,
-      fanB: raceState.fanB,
-      currentSpeed: raceState.speed,
-      maxObservedSpeed: raceState.maxObservedSpeed,
-      gear: raceState.gear,
-      maxRpm: raceState.maxRpm,
-      currentRpm: raceState.currentRpm,
-      idleRpm: raceState.idleRpm,
-    });
-  }, 250);
-
-  function readProperties() {
-    try {
-      properties = propertiesReader("server.properties");
-    } catch {
-      console.log(
-        "Failed to read properties file. Please ensure that server.properties exists and is valid"
-      );
-      process.exit(1);
-    }
-
-    const ip: string = properties.get("relay.client.ip") as string;
-    const port: number = properties.get("relay.client.port") as number;
-    const serialPort: string = properties.get("fans.port") as string;
-    const serverPort: number = properties.get("server.port") as number;
-
-    return { serverPort, port, ip, serialPort };
+function openPropertiesFile() {
+  let properties: PropertiesReader.Reader;
+  try {
+    properties = propertiesReader("server.properties");
+  } catch {
+    console.log(
+      "Failed to read properties file. Please ensure that server.properties exists and is valid"
+    );
+    process.exit(1);
   }
+
+  return properties;
+}
+
+function readProperties(properties: PropertiesReader.Reader) {
+  const relayIp: string = properties.get("relay.client.ip") as string;
+  const relayPort: number = properties.get("relay.client.port") as number;
+  const serialPort: string = properties.get("fans.port") as string;
+  const udpServerPort: number = properties.get("server.port") as number;
+
+  return { udpServerPort, relayPort, relayIp, serialPort };
 }
 
 init();

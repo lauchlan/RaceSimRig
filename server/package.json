@@ -8,7 +8,7 @@
     "start": "nodemon src/server.ts",
     "tsc": "tsc",
     "dev": "ts-node-dev --respawn --transpileOnly ./src/server.ts",
-    "prod": "tsc && node ./dist/server/server.js"
+    "prod": "tsc && node ./dist/server.js"
   },
   "repository": {
     "type": "git",
@@ -23,6 +23,7 @@
   "dependencies": {
     "express": "^4.16.4",
     "properties-reader": "^2.1.1",
+    "rxjs": "^6.6.3",
     "serialport": "^9.0.1",
     "ws": "^7.3.1"
   },

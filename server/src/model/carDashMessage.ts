@@ -118,7 +118,11 @@ export class CarDashMessage {
   normalizedDrivingLine: number = NaN;
   normalizedAIBrakeDifference: number = NaN;
 
-  populate(message: IndexedBuffer) {
+  constructor(message: IndexedBuffer | null = null) {
+    if (!message) {
+      return;
+    }
+
     this.isRaceOn = message.readInt32() == 1;
 
     this.timestampMS = message.readInt32(); //Getting wrong data
@@ -137,21 +141,13 @@ export class CarDashMessage {
     this.roll = message.readFloatLE();
 
     this.normalizedSuspensionTravel = message.readTyres();
-
     this.tireSlipRatio = message.readTyres();
-
     this.wheelRotationSpeed = message.readTyres();
-
     this.wheelOnRumbleStrip = message.readTyres();
-
     this.wheelInPuddleDepth = message.readTyres();
-
     this.surfaceRumble = message.readTyres();
-
     this.tireSlipAngle = message.readTyres();
-
     this.tireCombinedSlip = message.readTyres();
-
     this.suspensionTravelMeters = message.readTyres();
 
     this.carOrdinal = message.readInt32();
