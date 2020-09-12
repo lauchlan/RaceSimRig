@@ -45,13 +45,9 @@ async function init(useTestData: boolean) {
 
   const udpServer = new DatagramServer(udpServerPort, "0.0.0.0");
 
-  let capture$ = new Observable<Buffer>();
-
-  if (useTestData) {
-    capture$ = getCaptureStream("testData/capture.bin");
-  }
-
-  const buffer$ = merge(udpServer.datagram$, capture$);
+  const buffer$ = useTestData
+    ? getCaptureStream("testData/capture.bin")
+    : udpServer.datagram$;
 
   buffer$.subscribe((message: Buffer) => {
     echoClient.send(message);
