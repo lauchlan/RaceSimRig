@@ -95,10 +95,6 @@ export class GearAnalysis {
 
     if (currentTorque > 0 && (!value || currentTorque >= value)) {
       this.gearToSpeedToTorque.setValue(gear, speedMph, currentTorque);
-    } else {
-      console.log(
-        `not updating torque ${currentTorque} ${value} ${gear} ${speedMph}`
-      );
     }
   }
 
@@ -121,8 +117,6 @@ export class GearAnalysis {
       let speed = this.gearToSpeedToTorque.findSpeedWhereNextGearHasHigherValue(
         gear
       );
-
-      console.log(`Got speed ${speed} for crossover`);
 
       const maxRevsForCurrentGear = this.gearToSpeedToRevs.findFirstValueForSpeed(
         gear,

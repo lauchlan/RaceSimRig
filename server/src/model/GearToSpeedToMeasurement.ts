@@ -50,7 +50,6 @@ export class GearToSpeedToMeasurement {
       return speed > 0 && index >= speed && value != undefined;
     });
 
-    console.log("Found speeds", filtered.length);
     const val = filtered.length ? filtered[0] : defaultVal;
     return val;
   }
