@@ -56,7 +56,7 @@ export class FanControl {
     let message: string = "";
 
     if (!isNaN(aSpeed)) {
-      message = `A:${aSpeed}`;
+      message = `A:${Math.floor(aSpeed)}`;
     }
 
     if (!isNaN(bSpeed)) {
@@ -64,7 +64,7 @@ export class FanControl {
         message = message + ";";
       }
 
-      message = message + `B:${bSpeed}`;
+      message = message + `B:${Math.floor(bSpeed)}`;
     }
 
     return message;

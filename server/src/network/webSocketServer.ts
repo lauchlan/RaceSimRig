@@ -17,9 +17,9 @@ export class WebSocketServer {
 
     httpServer.listen(process.env.PORT || 8999, () => {
       console.log(
-        `Server started on port ${
+        `[Web Socket] Server started on port ${
           (httpServer.address() as WebSocket.AddressInfo).port
-        } :)`
+        }`
       );
     });
   }

@@ -92,7 +92,7 @@ export class WebServer {
 
   private initialiseReadApis() {
     this.app.get("/", (req: any, res: { send: (val: string) => any }) => {
-      return res.send(this.raceState.statusMsg());
+      return res.send(this.raceState.statusMsg(true));
     });
 
     this.app.get(

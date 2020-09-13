@@ -1,5 +1,6 @@
 import { CarDashMessage } from "./carDashMessage";
 import { Fan } from "./fanType";
+import { GearAnalysis } from "./gearAnalysis";
 
 export class RaceState {
   readonly MPH_MULTIPLIER: number = 2.23694;
@@ -21,15 +22,43 @@ export class RaceState {
   currentRpm: number = 0;
   idleRpm: number = 0;
 
-  processNewMessage(carDashMessage: CarDashMessage) {
-    this.isRaceOn = carDashMessage.isRaceOn;
+  isAccelerating: boolean = false;
+  isBraking: boolean = false;
 
+  torque: number = 0;
+
+  lap: number = 0;
+
+  gearAnalysis: GearAnalysis;
+
+  updateTime: number = 0;
+  accel: number = 0;
+  brake: number = 0;
+  raceTime: number = 0;
+  timeStamp: number = 0;
+
+  constructor(enableVoice: boolean) {
+    this.gearAnalysis = new GearAnalysis(enableVoice);
+  }
+
+  processNewMessage(carDashMessage: CarDashMessage) {
+    const time = Date.now();
+
+    this.isRaceOn = carDashMessage.isRaceOn;
     this.speed = carDashMessage.speed;
     this.gear = carDashMessage.gear;
-
     this.maxRpm = carDashMessage.engineMaxRpm;
-    this.currentRpm = carDashMessage.currentEngineRpm;
+    this.currentRpm = Math.floor(carDashMessage.currentEngineRpm);
     this.idleRpm = carDashMessage.engineIdleRpm;
+    this.isAccelerating = carDashMessage.accel > 0;
+    this.isBraking = carDashMessage.brake > 0;
+    this.torque = Math.floor(carDashMessage.torque);
+    this.lap = carDashMessage.lapNumber;
+    this.accel = carDashMessage.accel;
+    this.brake = carDashMessage.brake;
+
+    this.raceTime = Math.floor(carDashMessage.currentRaceTime);
+    this.timeStamp = Math.floor(carDashMessage.timestampMS);
 
     if (!this.isRaceOn) {
       if (!this.resetRaceTimeout) {
@@ -40,9 +69,13 @@ export class RaceState {
             clearTimeout(this.spinDownFansTimeout);
             this.spinDownFansTimeout = null;
           }
+
+          console.log("resetting");
           this.fanA.setSpeed(0);
           this.fanB.setSpeed(0);
-        }, 90000);
+
+          this.gearAnalysis.reset();
+        }, 120000);
       }
 
       if (!this.spinDownFansTimeout) {
@@ -73,15 +106,44 @@ export class RaceState {
         carDashMessage.speed,
         this.maxObservedSpeed
       );
+
+      this.gearAnalysis.captureTorqueAndRevs(
+        this.timeStamp,
+        this.gear,
+        Math.floor(this.speed * this.MPH_MULTIPLIER),
+        this.torque,
+        this.currentRpm,
+        this.maxRpm,
+        this.idleRpm,
+        this.isAccelerating
+      );
+    }
+
+    if (this.isRaceOn) {
     }
   }
 
-  statusMsg(): string {
+  statusMsg(verbose: boolean): string {
     const speedMph: number = Math.round(this.speed * this.MPH_MULTIPLIER);
     const maxSpeedMph: number = Math.round(
       this.maxObservedSpeed * this.MPH_MULTIPLIER
     );
 
-    return `[Status] Race On:${this.isRaceOn}, Speed: ${speedMph}mph, Max Speed ${maxSpeedMph} Gear:${this.gear}, fan A: ${this.fanA.percentageStrength}%, fan B: ${this.fanB.percentageStrength}%`;
+    let str = `[Status] Race:${this.isRaceOn} time: ${
+      this.timeStamp / 1000
+    } Speed:${speedMph}/${maxSpeedMph}mph RPM:${this.currentRpm} Gear:${
+      this.gear
+    } accel:${this.accel} brake:${this.brake} torque:${this.torque} fan A: ${
+      this.fanA.percentageStrength
+    }%, fan B: ${this.fanB.percentageStrength}%\n`;
+
+    if (verbose) {
+      str += this.gearAnalysis.revsAndTourqueStatus();
+    }
+
+    str = str + "\n";
+    str += this.gearAnalysis.revTableStatus();
+
+    return str;
   }
 }

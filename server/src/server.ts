@@ -8,16 +8,10 @@ import { WebServer } from "./network/webServer";
 import { WebSocketServer } from "./network/webSocketServer";
 import { RaceState } from "./model/raceStateType";
 
-import { interval, Observable, Observer, from, of, merge } from "rxjs";
-import {
-  throttleTime,
-  filter,
-  map,
-  delayWhen,
-  mergeMap,
-  concatMap,
-  delay,
-} from "rxjs/operators";
+import { getArguments } from "./arguments";
+
+import { interval } from "rxjs";
+import { map, bufferCount } from "rxjs/operators";
 
 import fs from "fs";
 
@@ -25,14 +19,24 @@ const propertiesReader = require("properties-reader");
 import PropertiesReader from "properties-reader";
 import { getCaptureStream } from "./controller/replayCapture";
 
-async function init(useTestData: boolean) {
+function init(
+  updateRate: number,
+  statusInterval: number,
+  enableUsb: number,
+  verbose: boolean,
+  enableVoice: boolean,
+  replayCaptureFile: string,
+  captureLoops: number,
+  replayDelay: number,
+  performCapture: boolean
+) {
   let properties: PropertiesReader.Reader = openPropertiesFile();
   const { udpServerPort, relayPort, relayIp, serialPort } = readProperties(
     properties
   );
 
   const echoClient: EchoClient = new EchoClient();
-  const raceState = new RaceState();
+  const raceState = new RaceState(enableVoice);
 
   const webServer = new WebServer(raceState);
 
@@ -40,56 +44,88 @@ async function init(useTestData: boolean) {
     properties.set("fans.port", devicePort);
     properties.save("server.properties");
 
-    fanControl.init(devicePort as string);
+    if (enableUsb) {
+      fanControl.init(devicePort as string);
+    }
   });
 
   const udpServer = new DatagramServer(udpServerPort, "0.0.0.0");
 
-  const buffer$ = useTestData
-    ? getCaptureStream("testData/capture.bin")
+  console.log("Use test data:", replayCaptureFile);
+  const buffer$ = replayCaptureFile
+    ? getCaptureStream(replayCaptureFile, replayDelay, captureLoops)
     : udpServer.datagram$;
+
+  if (replayCaptureFile) {
+    buffer$.subscribe({
+      complete: () => {
+        console.log("[Server] Replay complete");
+        process.exit();
+      },
+    });
+  }
+
+  const captureFile = performCapture
+    ? fs.createWriteStream("capture.bin")
+    : null;
 
   buffer$.subscribe((message: Buffer) => {
     echoClient.send(message);
+
+    if (captureFile) {
+      captureFile.write(message);
+    }
   });
 
-  buffer$
-    .pipe(throttleTime(250))
-    .pipe(
-      map((buffer) => {
-        const messageBuffer: IndexedBuffer = new IndexedBuffer(buffer);
-        const carDashMessage = new CarDashMessage(messageBuffer);
+  console.log(
+    `[Server] Status output every ${statusInterval}ms, processing every ${updateRate} message`
+  );
 
-        return carDashMessage;
-      })
+  buffer$
+    .pipe(
+      bufferCount(updateRate),
+      map((buffer) => getCarMessageFromBuffer(buffer))
     )
     .subscribe((carDashMessage: CarDashMessage) => {
       raceState.processNewMessage(carDashMessage);
-
       fanControl.write(raceState.fanA.pwmSpeed, raceState.fanB.pwmSpeed);
-
-      webSocketServer.send({
-        fanA: raceState.fanA,
-        fanB: raceState.fanB,
-        currentSpeed: raceState.speed,
-        maxObservedSpeed: raceState.maxObservedSpeed,
-        gear: raceState.gear,
-        maxRpm: raceState.maxRpm,
-        currentRpm: raceState.currentRpm,
-        idleRpm: raceState.idleRpm,
-      });
+      webSocketServer.send(createWebMetrics(raceState));
     });
 
   echoClient.connect(relayPort, relayIp);
 
   const fanControl: FanControl = new FanControl();
-  fanControl.init(serialPort as string);
+  if (enableUsb) {
+    fanControl.init(serialPort as string);
+  }
 
   const webSocketServer = new WebSocketServer(webServer.app);
 
-  const statusStream = interval(5000).subscribe(() =>
-    console.log(raceState.statusMsg())
+  const statusStream = interval(statusInterval).subscribe(() =>
+    console.log(raceState.statusMsg(verbose))
   );
+}
+
+function createWebMetrics(raceState: RaceState): Object {
+  return {
+    fanA: raceState.fanA,
+    fanB: raceState.fanB,
+    currentSpeed: raceState.speed,
+    maxObservedSpeed: raceState.maxObservedSpeed,
+    gear: raceState.gear,
+    maxRpm: raceState.maxRpm,
+    currentRpm: raceState.currentRpm,
+    idleRpm: raceState.idleRpm,
+  };
+}
+
+function getCarMessageFromBuffer(buffer: Buffer[]) {
+  const messageBuffer: IndexedBuffer = new IndexedBuffer(
+    buffer.pop() as Buffer
+  );
+  const carDashMessage = new CarDashMessage(messageBuffer);
+
+  return carDashMessage;
 }
 
 function openPropertiesFile() {
@@ -115,15 +151,16 @@ function readProperties(properties: PropertiesReader.Reader) {
   return { udpServerPort, relayPort, relayIp, serialPort };
 }
 
-const yargs = require("yargs");
+const argv = getArguments();
 
-const argv = yargs
-  .option("useTestData", {
-    alias: "t",
-    description: "play capture data",
-    type: "boolean",
-  })
-  .help()
-  .alias("help", "h").argv;
-
-init(argv.useTestData);
+init(
+  argv.updateRate,
+  argv.statusInterval,
+  argv.enableUsb,
+  argv.verbose,
+  argv.speak,
+  argv.useTestData,
+  argv.loops,
+  argv.replayDelay,
+  argv.capture
+);

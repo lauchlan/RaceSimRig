@@ -3,12 +3,15 @@ import fs from "fs";
 
 export function getCaptureStream(
   filePath: string,
-  delay = 25
+  delay = 25,
+  loops = 0
 ): Observable<Buffer> {
   const MSG_SIZE = 311;
   const buffer = Buffer.alloc(MSG_SIZE);
 
   const msg$ = new Subject<Buffer>();
+
+  let loopNumber = 0;
 
   function readFile() {
     fs.open(filePath, "r", function (err, fd) {
@@ -30,7 +33,12 @@ export function getCaptureStream(
                 msg$.error(err);
                 return;
               } else {
-                readFile();
+                if (loops == 0 || loopNumber < loops) {
+                  ++loopNumber;
+                  readFile();
+                } else {
+                  msg$.complete();
+                }
               }
             });
 
@@ -41,7 +49,7 @@ export function getCaptureStream(
           }
 
           msg$.next(Buffer.from(buffer));
-          setTimeout(() => readMessage(), 25);
+          setTimeout(() => readMessage(), delay);
         });
       }
       readMessage();
