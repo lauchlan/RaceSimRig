@@ -115,7 +115,7 @@ export class RaceState {
         this.currentRpm,
         this.maxRpm,
         this.idleRpm,
-        this.isAccelerating
+        this.accel
       );
     }
 
