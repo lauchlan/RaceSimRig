@@ -102,80 +102,16 @@
       </div>
     </div>
    </div>
+
+   <div id="track" style="display:none;position: absolute;width:600px;height:600px;background: #000;top:0;left:0">
+    <div id="trackHeader" style="width:100%;height:10px;background: #ababab;cursor: move;"></div>
+    <div style="width:100%;height:100%;padding:10px">
+    <canvas id="trackMap" style="width:100%;height:100%;padding-top:10;" width="1" height="1"/>
+  </div>
+   </div>
   </body>
 
-  <script>
-    function WebSocketTest() {
-      if ("WebSocket" in window) {
-        // Let us open a web socket
-        var ws = new WebSocket("ws://localhost:8999/");
+  <script src="app.js"></script>
 
-        ws.onopen = function () {
-          console.log("Socket opened");
-        };
-
-        ws.onmessage = function (evt) {
-          var received_msg = evt.data;
-
-          var data = JSON.parse(evt.data);
-
-          console.log(data);
-          document.getElementById("fanA").innerHTML =
-            Math.round(data.fanA.percentageStrength) + "%";
-          document.getElementById("fanB").innerHTML =
-            Math.round(data.fanB.percentageStrength) + "%";
-          document.getElementById("gear").innerHTML = data.gear;
-          document.getElementById("speed").innerHTML = Math.round(
-            data.currentSpeed * 2.23694
-          );
-          document.getElementById("rpm").innerHTML =
-            Math.round(data.currentRpm) + "/" + Math.round(data.maxRpm);
-
-
-           if (data.fanA.override) {
-            document.getElementById('fanASelect').value = data.fanA.percentageStrength;
-           }
-           else {
-            document.getElementById('fanASelect').value = 0;
-           }
-           
-
-           if (data.fanB.override) {
-            document.getElementById('fanBSelect').value = data.fanB.percentageStrength;
-           }
-           else {
-            document.getElementById('fanBSelect').value = 0;
-           }
-        };
-
-        ws.onclose = function () {
-          // websocket is closed.
-          console.log("socket closed");
-        };
-      } else {
-        // The browser doesn't support WebSocket
-        console.error("WebSocket NOT supported by your Browser!");
-      }
-    }
-
-    function fanChange(fan,value) {
-
-        if (value == 0) {
-            value = -1;
-        }
-        else {
-            value = Math.round((value/100) * 255);
-        }
-
-        console.log(fan,value);
-        fetch(`http://localhost:8080/fan/${fan}/`,
-         {
-            method:'POST',
-            headers: {'content-type': 'application/json'},
-           body: JSON.stringify({speed:value})
-        });
-    }
-    WebSocketTest();
-  </script>
   <script type="text/javascript" src="js/materialize.js"></script>
 </html>

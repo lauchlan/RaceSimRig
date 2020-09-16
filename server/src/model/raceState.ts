@@ -1,4 +1,4 @@
-import { CarDashMessage } from "./carDashMessage";
+import { CarDashMessage, Triple } from "./carDashMessage";
 import { Fan } from "./fanType";
 import { GearAnalysis } from "./gearAnalysis";
 
@@ -37,6 +37,11 @@ export class RaceState {
   raceTime: number = 0;
   timeStamp: number = 0;
 
+  position: Triple = { x: 0, y: 0, z: 0 };
+
+  maxX = 0;
+  maxY = 0;
+
   constructor(enableVoice: boolean) {
     this.gearAnalysis = new GearAnalysis(enableVoice);
   }
@@ -59,6 +64,10 @@ export class RaceState {
 
     this.raceTime = Math.floor(carDashMessage.currentRaceTime);
     this.timeStamp = Math.floor(carDashMessage.timestampMS);
+
+    this.position = carDashMessage.position;
+    this.maxX = Math.max(this.maxX, this.position.x);
+    this.maxY = Math.max(this.maxY, this.position.y);
 
     if (!this.isRaceOn) {
       if (!this.resetRaceTimeout) {
@@ -131,11 +140,13 @@ export class RaceState {
 
     let str = `[Status] Race:${this.isRaceOn} time: ${
       this.timeStamp / 1000
-    } Speed:${speedMph}/${maxSpeedMph}mph RPM:${this.currentRpm} Gear:${
-      this.gear
-    } accel:${this.accel} brake:${this.brake} torque:${this.torque} fan A: ${
-      this.fanA.percentageStrength
-    }%, fan B: ${this.fanB.percentageStrength}%\n`;
+    } Lap:${this.lap} Speed:${speedMph}/${maxSpeedMph}mph RPM:${
+      this.currentRpm
+    } Gear:${this.gear} accel:${this.accel} brake:${this.brake} torque:${
+      this.torque
+    } fan A: ${this.fanA.percentageStrength}%, fan B: ${
+      this.fanB.percentageStrength
+    }%\n`;
 
     if (verbose) {
       str += this.gearAnalysis.revsAndTourqueStatus();

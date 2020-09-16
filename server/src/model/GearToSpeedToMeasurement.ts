@@ -96,14 +96,49 @@ export class GearToSpeedToMeasurement {
     const values: TopNValues[] = this.data[gear];
     const nextGearValues: TopNValues[] = this.data[gear + 1];
 
-    for (let i = 0; i < values.length; ++i) {
-      if (
-        nextGearValues[i]?.getValue(this.percentile) >
-        values[i]?.getValue(this.percentile)
-      ) {
+    // we're going to start our search from the speed with the highest value
+    const { maxSpeed } = this.data[gear].reduce(
+      (prev, cur: TopNValues, speed) => {
+        const val = cur.getValue(this.percentile);
+
+        if (val >= prev.maxValue) {
+          prev.maxValue = val;
+          prev.maxSpeed = speed;
+        }
+        return prev;
+      },
+      {
+        maxValue: 0,
+        maxSpeed: 0,
+      }
+    );
+
+    for (let i = maxSpeed; i < values.length; ++i) {
+      const thisValue = values[i]?.getValue(this.percentile);
+      let nextGearValue = undefined;
+
+      if (nextGearValues[i] === undefined) {
+        let backwardsSearchIndex = i - 1;
+
+        while (backwardsSearchIndex > 0 && nextGearValue === undefined) {
+          if (nextGearValues[backwardsSearchIndex]) {
+            const prevValue = nextGearValues[backwardsSearchIndex].getValue(
+              this.percentile
+            );
+            if (prevValue !== undefined) {
+              nextGearValue = prevValue;
+            }
+          }
+          --backwardsSearchIndex;
+        }
+      } else {
+        nextGearValue = nextGearValues[i].getValue(this.percentile);
+      }
+
+      if ((nextGearValue as number) >= thisValue) {
         speed = i;
-        value = values[i]?.getValue(this.percentile);
-        break;
+        value = thisValue;
+        return { speed, value };
       }
     }
 

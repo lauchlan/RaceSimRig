@@ -6,7 +6,7 @@ import { PortInfo } from "serialport";
 
 import PropertiesReader from "properties-reader";
 
-import { RaceState } from "../model/raceStateType";
+import { RaceState } from "../model/raceState";
 import { Fan } from "../model/fanType";
 
 export class WebServer {

@@ -6,7 +6,7 @@ import { FanControl } from "./controller/fanControl";
 
 import { WebServer } from "./network/webServer";
 import { WebSocketServer } from "./network/webSocketServer";
-import { RaceState } from "./model/raceStateType";
+import { RaceState } from "./model/raceState";
 
 import { getArguments } from "./arguments";
 
@@ -28,7 +28,8 @@ function init(
   replayCaptureFile: string,
   captureLoops: number,
   replayDelay: number,
-  performCapture: boolean
+  performCapture: boolean,
+  enableEcho: boolean
 ) {
   let properties: PropertiesReader.Reader = openPropertiesFile();
   const { udpServerPort, relayPort, relayIp, serialPort } = readProperties(
@@ -51,7 +52,7 @@ function init(
 
   const udpServer = new DatagramServer(udpServerPort, "0.0.0.0");
 
-  console.log("Use test data:", replayCaptureFile);
+  console.log("[Server] Using test data:", replayCaptureFile);
   const buffer$ = replayCaptureFile
     ? getCaptureStream(replayCaptureFile, replayDelay, captureLoops)
     : udpServer.datagram$;
@@ -59,7 +60,8 @@ function init(
   if (replayCaptureFile) {
     buffer$.subscribe({
       complete: () => {
-        console.log("[Server] Replay complete");
+        console.log("[Server] Replay complete", raceState.maxX, raceState.maxY);
+
         process.exit();
       },
     });
@@ -70,7 +72,9 @@ function init(
     : null;
 
   buffer$.subscribe((message: Buffer) => {
-    echoClient.send(message);
+    if (enableEcho) {
+      echoClient.send(message);
+    }
 
     if (captureFile) {
       captureFile.write(message);
@@ -92,7 +96,9 @@ function init(
       webSocketServer.send(createWebMetrics(raceState));
     });
 
-  echoClient.connect(relayPort, relayIp);
+  if (enableEcho) {
+    echoClient.connect(relayPort, relayIp);
+  }
 
   const fanControl: FanControl = new FanControl();
   if (enableUsb) {
@@ -108,6 +114,8 @@ function init(
 
 function createWebMetrics(raceState: RaceState): Object {
   return {
+    time: raceState.timeStamp,
+    isRaceOn: raceState.isRaceOn,
     fanA: raceState.fanA,
     fanB: raceState.fanB,
     currentSpeed: raceState.speed,
@@ -116,6 +124,8 @@ function createWebMetrics(raceState: RaceState): Object {
     maxRpm: raceState.maxRpm,
     currentRpm: raceState.currentRpm,
     idleRpm: raceState.idleRpm,
+    position: raceState.position,
+    lap: raceState.lap,
   };
 }
 
@@ -154,13 +164,14 @@ function readProperties(properties: PropertiesReader.Reader) {
 const argv = getArguments();
 
 init(
-  argv.updateRate,
-  argv.statusInterval,
+  argv.delay,
+  argv.statsInterval,
   argv.enableUsb,
   argv.verbose,
-  argv.speak,
-  argv.useTestData,
+  argv.voice,
+  argv.inputFile,
   argv.loops,
-  argv.replayDelay,
-  argv.capture
+  argv.delay,
+  argv.capture,
+  argv.enableEcho
 );

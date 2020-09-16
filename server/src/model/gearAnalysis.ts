@@ -4,7 +4,7 @@ const { exec } = require("child_process");
 
 export class GearAnalysis {
   private gearToSpeedToTorque: GearToSpeedToMeasurement;
-  private gearToSpeedToRevs: GearToSpeedToMeasurement;
+  private gearToSpeedToRpm: GearToSpeedToMeasurement;
   private gearToMinMaxRevs: {
     minRevs: number;
     maxRevs: number;
@@ -16,7 +16,7 @@ export class GearAnalysis {
 
   private lastAdviceOnGearUp: number = -1; // The gear advice was last given to go up from
   private lastAdviceOnGearDown: number = -1; // The gear advice was last given to go down from
-  private enableVoice: boolean = false;
+  private readonly enableVoice: boolean = false;
   private isTalking: boolean = false;
 
   private timeOfLastGearChange: number = 0;
@@ -27,7 +27,7 @@ export class GearAnalysis {
   constructor(enableVoice: boolean) {
     this.enableVoice = enableVoice;
     this.gearToSpeedToTorque = new GearToSpeedToMeasurement(8, 100);
-    this.gearToSpeedToRevs = new GearToSpeedToMeasurement(8, 95);
+    this.gearToSpeedToRpm = new GearToSpeedToMeasurement(8, 95);
 
     this.reset();
 
@@ -41,7 +41,7 @@ export class GearAnalysis {
     this.previousRpm = 0;
 
     this.gearToSpeedToTorque.reset();
-    this.gearToSpeedToRevs.reset();
+    this.gearToSpeedToRpm.reset();
 
     this.gearToMinMaxRevs = [
       {
@@ -135,8 +135,8 @@ export class GearAnalysis {
     this.captureSpeedToTorque(torque, gear, speedMph);
     this.captureSpeedToRevs(rpm, gear, speedMph);
 
-    this.updateRevTable(gear, maxRpm);
-    this.issueGearAdvice(accel > 0, gear, rpm, speedMph, maxRpm);
+    this.updateStatsTable(gear, maxRpm);
+    this.issueGearAdvice(accel > 0, gear, rpm, maxRpm);
 
     this.previousGear = gear;
     this.previousRpm = rpm;
@@ -160,18 +160,18 @@ export class GearAnalysis {
             const delta = this.previousRpm - maxRpmForChange;
             const deltaPercent = delta / maxRpmForChange;
 
-            if (Math.abs(deltaPercent) < 0.1) {
+            if (Math.abs(delta) < 100) {
               rating = "excellent";
-            } else if (deltaPercent < 0.2) {
+            } else if (delta < 300) {
               rating = "good";
-            } else if (deltaPercent < 0.3) {
+            } else if (delta < 500) {
               rating = "fair";
             } else {
               rating = "poor";
             }
 
             if (rating != "excellent") {
-              rating += deltaPercent < 0 ? " early" : " late";
+              rating += delta < 0 ? " early" : " late";
             }
           }
         }
@@ -199,18 +199,18 @@ export class GearAnalysis {
   }
 
   private captureSpeedToRevs(rpm: number, gear: number, speedMph: number) {
-    let value = this.gearToSpeedToRevs.value(gear, speedMph);
+    let value = this.gearToSpeedToRpm.value(gear, speedMph);
 
     if (!this.hasRecentlyChangeGear || gear > this.previousGear) {
       const currentRevs = this.roundToNearest(rpm, 50);
 
       if (!value || currentRevs >= value) {
-        this.gearToSpeedToRevs.setValue(gear, speedMph, currentRevs);
+        this.gearToSpeedToRpm.setValue(gear, speedMph, currentRevs);
       }
     }
   }
 
-  private updateRevTable(gear: number, maxRpm: number) {
+  private updateStatsTable(gear: number, maxRpm: number) {
     if (gear > 0 && gear < 7) {
       const curStats = this.gearToMinMaxRevs[gear];
 
@@ -219,13 +219,13 @@ export class GearAnalysis {
         value: torque,
       } = this.gearToSpeedToTorque.findSpeedWhereNextGearHasHigherValue(gear);
 
-      const maxRevsForCurrentGear = this.gearToSpeedToRevs.findFirstValueForSpeed(
+      const maxRevsForCurrentGear = this.gearToSpeedToRpm.findFirstValueForSpeed(
         gear,
         speed,
         Math.floor(maxRpm * 0.9)
       );
 
-      const minRevsForNextGear = this.gearToSpeedToRevs.findFirstValueForSpeed(
+      const minRevsForNextGear = this.gearToSpeedToRpm.findFirstValueForSpeed(
         gear + 1,
         speed,
         Math.floor(maxRpm * 0.4)
@@ -262,105 +262,70 @@ export class GearAnalysis {
     isAccelerating: boolean,
     gear: number,
     rpm: number,
-    speed: number,
     maxRpm: number
   ) {
     if (!isAccelerating) {
       return;
     }
 
-    const currGearTorque = this.gearToSpeedToTorque.findFirstValueForSpeed(
-      gear,
-      speed,
-      0
-    );
-    const nextGearTorque = this.gearToSpeedToTorque.findFirstValueForSpeed(
-      gear + 1,
-      speed,
-      0
-    );
-    const prevGearTorque = this.gearToSpeedToTorque.findFirstValueForSpeed(
-      gear - 1,
-      speed,
-      0
-    );
+    if (this.lastAdviceOnGearUp != gear) {
+      const shouldChangeUp = this.shouldChangeUp(gear, rpm, maxRpm);
 
-    const shouldChangeUp = this.shouldChangeUp(
-      gear,
-      currGearTorque,
-      nextGearTorque,
-      rpm,
-      maxRpm
-    );
-
-    if (shouldChangeUp) {
-      if (this.lastAdviceOnGearUp != gear) {
+      if (shouldChangeUp) {
         this.lastAdviceOnGearUp = gear;
         this.lastAdviceOnGearDown = -1;
 
         console.log("[CoPilot] Adivce: Gear up to ", gear + 1);
         this.speakAdvice(`up to ${gear + 1}`);
+
+        return;
       }
-    } else {
-      if (this.lastAdviceOnGearDown != gear) {
-        const shouldChangeDown = this.shouldChangeDown(
-          gear,
-          currGearTorque,
-          prevGearTorque,
-          rpm,
-          maxRpm
-        );
+    }
 
-        if (shouldChangeDown) {
-          this.lastAdviceOnGearDown = gear;
-          this.lastAdviceOnGearUp = -1;
-          console.log("[CoPilot] Gear down to ", gear - 1);
+    if (this.lastAdviceOnGearDown != gear) {
+      const shouldChangeDown = this.shouldChangeDown(gear, rpm, maxRpm);
 
-          this.speakAdvice(`down to ${gear - 1}`);
-        }
+      if (shouldChangeDown) {
+        this.lastAdviceOnGearDown = gear;
+        this.lastAdviceOnGearUp = -1;
+
+        console.log("[CoPilot] Gear down to ", gear - 1);
+        this.speakAdvice(`down to ${gear - 1}`);
       }
     }
   }
 
-  private shouldChangeUp(
-    gear: number,
-    currGearTorque: number,
-    nextGearTorque: number,
-    rpm: number,
-    maxRpm: number
-  ) {
+  private shouldChangeUp(gear: number, rpm: number, maxRpm: number) {
     if (gear > 6) {
       return false;
     }
 
     let shouldChangeUp = false;
 
-    if (currGearTorque && nextGearTorque) {
-      shouldChangeUp = nextGearTorque >= currGearTorque;
-    } else {
-      shouldChangeUp = rpm >= maxRpm * 0.9;
+    let rpmLimit = this.gearToMinMaxRevs[gear].maxRevs;
+
+    if (!rpmLimit) {
+      rpmLimit = maxRpm * 0.9;
     }
+
+    shouldChangeUp = rpm >= rpmLimit;
     return shouldChangeUp;
   }
 
-  private shouldChangeDown(
-    gear: number,
-    currGearTorque: number,
-    prevGearTorque: number,
-    rpm: number,
-    maxRpm: number
-  ) {
-    if (gear < 1) {
+  private shouldChangeDown(gear: number, rpm: number, maxRpm: number) {
+    if (gear < 2) {
       return false;
     }
 
     let shouldChangeDown = false;
 
-    if (currGearTorque && prevGearTorque) {
-      shouldChangeDown = prevGearTorque > prevGearTorque;
-    } else {
-      shouldChangeDown = rpm < maxRpm * 0.4;
+    let rpmLimit = this.gearToMinMaxRevs[gear].maxRevs;
+
+    if (rpmLimit) {
+      rpmLimit = maxRpm * 0.5;
     }
+
+    shouldChangeDown = rpm < rpmLimit;
     return shouldChangeDown;
   }
 
@@ -368,8 +333,8 @@ export class GearAnalysis {
     if (this.enableVoice && !this.isTalking) {
       exec(`say -v "Fiona" -r 150 "${advice}"`);
 
-      this.isTalking = true;
-      setTimeout(() => (this.isTalking = false), 5);
+      //this.isTalking = true;
+      //setTimeout(() => (this.isTalking = false), 5);
     }
   }
 
@@ -379,7 +344,7 @@ export class GearAnalysis {
 
   revsAndTourqueStatus() {
     let str = "Revs\n--------\n";
-    str += this.gearToSpeedToRevs.statusMsg();
+    str += this.gearToSpeedToRpm.statusMsg();
 
     str += "Torque\n--------\n";
     str += this.gearToSpeedToTorque.statusMsg();
@@ -388,9 +353,19 @@ export class GearAnalysis {
   }
 
   revTableStatus() {
-    let str = "";
+    let str = " G:     Revs      MPH  Torque\n";
     this.gearToMinMaxRevs.forEach((data, gear: number) => {
-      str = `${str} ${gear}: ${data.minRevs}:${data.maxRevs} ${data.minMph}:${data.maxMph} ${data.minTorque}:${data.maxTorque}\n`;
+      str = `${str} ${gear}: ${data.minRevs
+        .toString()
+        .padStart(5)}:${data.maxRevs
+        .toString()
+        .padEnd(5)} ${data.minMph
+        .toString()
+        .padStart(3)}:${data.maxMph
+        .toString()
+        .padEnd(3)} ${data.minTorque
+        .toString()
+        .padStart(3)}:${data.maxTorque.toString().padEnd(3)}\n`;
     });
 
     return str;
