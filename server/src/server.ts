@@ -107,13 +107,18 @@ function init(
 
   const webSocketServer = new WebSocketServer(webServer.app);
 
-  const statusStream = interval(statusInterval).subscribe(() =>
-    console.log(raceState.statusMsg(verbose))
-  );
+  const statusStream = interval(statusInterval).subscribe(() => {
+    console.log(raceState.statusMsg(verbose));
+    webSocketServer.send({
+      type: "stats",
+      stats: raceState.stats(),
+    });
+  });
 }
 
 function createWebMetrics(raceState: RaceState): Object {
   return {
+    type: "dash",
     time: raceState.timeStamp,
     isRaceOn: raceState.isRaceOn,
     fanA: raceState.fanA,

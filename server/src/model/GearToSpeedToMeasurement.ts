@@ -23,6 +23,24 @@ export class GearToSpeedToMeasurement {
     return this.data[gear][currentMph]?.getValue(this.percentile);
   }
 
+  stats() {
+    const stats = this.data.reduce(
+      (prev: Array<any>, speeds: TopNValues[], gear: number) => {
+        prev[gear] = [];
+        speeds.forEach((value: TopNValues, speed) => {
+          if (value) {
+            prev[gear][speed] = value.getValue(this.percentile);
+          }
+        });
+
+        return prev;
+      },
+      []
+    );
+
+    return stats;
+  }
+
   statusMsg() {
     let str = "";
     this.data.forEach((speeds: TopNValues[], gear: number) => {

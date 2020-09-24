@@ -84,4 +84,5 @@ dist
 .vscode
 server.properties
 *.bin
+*.icloud
 # End of https://www.gitignore.io/api/node

@@ -1,4 +1,4 @@
-import { CarDashMessage, Triple } from "./carDashMessage";
+import { CarDashMessage, Triple, Tyres } from "./carDashMessage";
 import { Fan } from "./fanType";
 import { GearAnalysis } from "./gearAnalysis";
 
@@ -41,6 +41,13 @@ export class RaceState {
 
   maxX = 0;
   maxY = 0;
+  tireCombinedSlip: Tyres = {
+    frontLeft: 0,
+    frontRight: 0,
+    rearLeft: 0,
+    rearRight: 0,
+  };
+  boost: number = 0;
 
   constructor(enableVoice: boolean) {
     this.gearAnalysis = new GearAnalysis(enableVoice);
@@ -68,6 +75,9 @@ export class RaceState {
     this.position = carDashMessage.position;
     this.maxX = Math.max(this.maxX, this.position.x);
     this.maxY = Math.max(this.maxY, this.position.y);
+
+    this.tireCombinedSlip = carDashMessage.tireCombinedSlip;
+    this.boost = carDashMessage.boost;
 
     if (!this.isRaceOn) {
       if (!this.resetRaceTimeout) {
@@ -116,7 +126,7 @@ export class RaceState {
         this.maxObservedSpeed
       );
 
-      this.gearAnalysis.captureTorqueAndRevs(
+      this.gearAnalysis.captureTorqueAndRpm(
         this.timeStamp,
         this.gear,
         Math.floor(this.speed * this.MPH_MULTIPLIER),
@@ -124,12 +134,18 @@ export class RaceState {
         this.currentRpm,
         this.maxRpm,
         this.idleRpm,
-        this.accel
+        this.accel,
+        this.tireCombinedSlip,
+        this.boost
       );
     }
 
     if (this.isRaceOn) {
     }
+  }
+
+  stats() {
+    return this.gearAnalysis.stats();
   }
 
   statusMsg(verbose: boolean): string {
@@ -149,7 +165,7 @@ export class RaceState {
     }%\n`;
 
     if (verbose) {
-      str += this.gearAnalysis.revsAndTourqueStatus();
+      str += this.gearAnalysis.rpmAndTourqueStatus();
     }
 
     str = str + "\n";

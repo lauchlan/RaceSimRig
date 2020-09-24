@@ -105,10 +105,19 @@
 
    <div id="track" style="display:none;position: absolute;width:600px;height:600px;background: #000;top:0;left:0">
     <div id="trackHeader" style="width:100%;height:10px;background: #ababab;cursor: move;"></div>
-    <div style="width:100%;height:100%;padding:10px">
-    <canvas id="trackMap" style="width:100%;height:100%;padding-top:10;" width="1" height="1"/>
-  </div>
+    <div style="width:100%;height:490px;padding:20px;padding-bottom:100px">
+      <canvas id="trackMap" style="width:100%;height:100%;padding-top:10;" width="1" height="1"/>
+    </div>
+    <div class="section white-text center-align" style="height:100px"><span id="lap"></span></div>
    </div>
+
+   <div id="stats" style="display:none;position: absolute;width:600px;height:600px;background: #000;top:0;left:700px;" >
+    <div id="statsHeader" style="width:100%;height:10px;background: #ababab;cursor: move;"></div>
+    <div style="width:100%;height:100%;padding:10px;padding-bottom: 200px;">
+      <canvas id="statsChart" style="width:100%;height:100%;padding-top:10;" width="300" height="800"/>
+    </div>
+   </div>
+
   </body>
 
   <script src="app.js"></script>
