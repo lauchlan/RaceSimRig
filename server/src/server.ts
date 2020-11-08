@@ -138,7 +138,9 @@ function getCarMessageFromBuffer(buffer: Buffer[]) {
   const messageBuffer: IndexedBuffer = new IndexedBuffer(
     buffer.pop() as Buffer
   );
-  const carDashMessage = new CarDashMessage(messageBuffer);
+
+  const isHorizon4Format = messageBuffer.length() == 324;
+  const carDashMessage = new CarDashMessage(messageBuffer, isHorizon4Format);
 
   return carDashMessage;
 }

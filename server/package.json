@@ -7,6 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "watch": "nodemon src/server.ts",
     "start": "node ./dist/server.js",
+    "dev": "nodemon src/server.ts -- -s 1000 -u false -v",
     "tsc": "tsc",
     "prod": "tsc && node ./dist/server.js"
   },

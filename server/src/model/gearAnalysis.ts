@@ -184,11 +184,11 @@ export class GearAnalysis {
       if (this.previousGear && minSpeedForChange && gear > this.previousGear) {
         const delta = speed - minSpeedForChange;
 
-        if (Math.abs(delta) < 2) {
+        if (Math.abs(delta) < 5) {
           rating = "excellent";
-        } else if (Math.abs(delta) < 5) {
-          rating = "good";
         } else if (Math.abs(delta) < 10) {
+          rating = "good";
+        } else if (Math.abs(delta) < 20) {
           rating = "fair";
         } else {
           rating = "poor";

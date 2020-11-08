@@ -48,6 +48,7 @@ export class RaceState {
     rearRight: 0,
   };
   boost: number = 0;
+  carOrdinal: number = 0;
 
   constructor(enableVoice: boolean) {
     this.gearAnalysis = new GearAnalysis(enableVoice);
@@ -78,6 +79,11 @@ export class RaceState {
 
     this.tireCombinedSlip = carDashMessage.tireCombinedSlip;
     this.boost = carDashMessage.boost;
+
+    if (carDashMessage.carOrdinal != this.carOrdinal) {
+      this.gearAnalysis.reset();
+    }
+    this.carOrdinal = carDashMessage.carOrdinal;
 
     if (!this.isRaceOn) {
       if (!this.resetRaceTimeout) {

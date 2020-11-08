@@ -121,7 +121,10 @@ function WebSocketTest() {
       var data = JSON.parse(evt.data);
 
       if (data.type == "dash") {
-        if (data.isRaceOn && data.lap < lastLapNumber) {
+        if (
+          positions.length > 1000 ||
+          (data.isRaceOn && data.lap < lastLapNumber)
+        ) {
           trace("Resetting");
           c.width = 1;
           c.height = 1;

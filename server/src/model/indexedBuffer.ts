@@ -9,6 +9,14 @@ export class IndexedBuffer {
     this.position = 0;
   }
 
+  advancePosition(value: number) {
+    this.position += value;
+  }
+
+  length() {
+    return this.message.length;
+  }
+
   readInt32(): number {
     const val = this.message.readInt32LE(this.position);
     this.position += 4;

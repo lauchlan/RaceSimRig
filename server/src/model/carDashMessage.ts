@@ -118,10 +118,12 @@ export class CarDashMessage {
   normalizedDrivingLine: number = NaN;
   normalizedAIBrakeDifference: number = NaN;
 
-  constructor(message: IndexedBuffer | null = null) {
+  constructor(message: IndexedBuffer | null = null, isHorizon4Format: boolean) {
     if (!message) {
       return;
     }
+
+    // sled properties
 
     this.isRaceOn = message.readInt32() == 1;
 
@@ -155,6 +157,12 @@ export class CarDashMessage {
     this.carPerformanceIndex = message.readInt32();
     this.drivetrainType = message.readInt32();
     this.numCylinders = message.readInt32();
+
+    // start of car dash properties
+
+    if (isHorizon4Format) {
+      message.advancePosition(12);
+    }
 
     this.position = message.readTriple();
 
