@@ -121,10 +121,10 @@ export class RaceState {
       }
 
       this.fanA.setSpeed(
-        Math.floor((carDashMessage.speed / this.maxObservedSpeed) * 255)
+        Math.floor(Math.min(255,(carDashMessage.speed / this.maxObservedSpeed) * 255))
       );
       this.fanB.setSpeed(
-        Math.floor((carDashMessage.speed / this.maxObservedSpeed) * 255)
+        Math.floor(Math.min(255,(carDashMessage.speed / this.maxObservedSpeed) * 255))
       );
 
       this.maxObservedSpeed = Math.max(
