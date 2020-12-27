@@ -44,6 +44,13 @@
             margin-top: 0px;
             font-size: 40px;
         }
+
+        input[type=number] {
+          color: #fff;
+          font-size: 100px;
+        }
+
+     
     </style>
   </head>
   <body class="grey darken-4">
@@ -81,8 +88,10 @@
           <h3 class="center-align">
             <span id="fanA"></span>
             <form action="#">
-                <p class="range-field">
-                  <input type="range" id="fanASelect" min="0" max="100" onchange="fanChange('a', document.getElementById('fanASelect').value)" />
+                <p class="input-field">
+                  <input type="number" id="fanASelect" min="0" max="100" onchange="fanChange('a', document.getElementById('fanASelect').value)" />
+                  <a class="waves-effect waves-light btn" onclick="document.getElementById('fanASelect').value--">-</a>
+                  <a class="waves-effect waves-light btn" onclick="document.getElementById('fanASelect').value++">+</a>
                 </p>
               </form>
           </h5>
@@ -93,8 +102,10 @@
           <h3 class="center-align">
             <span id="fanB"></span>
             <form action="#">
-                <p class="range-field" style="font-size:50px">
-                  <input type="range" id="fanBSelect" min="0" max="100" onchange="fanChange('b', document.getElementById('fanBSelect').value)"/>
+                <p class="input-field" style="font-size:50px">
+                  <input type="number" id="fanBSelect" min="0" max="100" onchange="fanChange('b', document.getElementById('fanBSelect').value)"/>
+                  <a class="waves-effect waves-light btn" onclick="document.getElementById('fanBSelect').value--">-</a>
+                  <a class="waves-effect waves-light btn" onclick="document.getElementById('fanBSelect').value++">+</a>
                 </p>
               </form>
           </h5>
