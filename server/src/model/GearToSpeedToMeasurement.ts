@@ -20,6 +20,8 @@ export class GearToSpeedToMeasurement {
   }
 
   value(gear: number, currentMph: number): number {
+    if (isNaN(gear)) return NaN;
+
     return this.data[gear][currentMph]?.getValue(this.percentile);
   }
 
@@ -60,6 +62,8 @@ export class GearToSpeedToMeasurement {
   }
 
   setValue(gear: number, currentMph: number, value: number): number {
+    if (isNaN(gear)) return NaN;
+
     if (!this.data[gear][currentMph]) {
       this.data[gear][currentMph] = new TopNValues(100);
     }

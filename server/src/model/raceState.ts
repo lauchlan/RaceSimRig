@@ -50,6 +50,8 @@ export class RaceState {
   boost: number = 0;
   carOrdinal: number = 0;
 
+  categoryCount: number = 0;
+
   constructor(enableVoice: boolean) {
     this.gearAnalysis = new GearAnalysis(enableVoice);
   }
@@ -57,6 +59,9 @@ export class RaceState {
   processNewMessage(carDashMessage: CarDashMessage) {
     const time = Date.now();
 
+    if (carDashMessage.categoryCount < this.categoryCount) return;
+
+    this.categoryCount = this.categoryCount;
     this.isRaceOn = carDashMessage.isRaceOn;
     this.speed = carDashMessage.speed;
     this.gear = carDashMessage.gear;
@@ -80,7 +85,8 @@ export class RaceState {
     this.tireCombinedSlip = carDashMessage.tireCombinedSlip;
     this.boost = carDashMessage.boost;
 
-    if (carDashMessage.carOrdinal != this.carOrdinal) {
+    if (!isNaN(carDashMessage.carOrdinal) && carDashMessage.carOrdinal != this.carOrdinal) {
+      console.log(`Car change from ${carDashMessage.carOrdinal} tp ${this.carOrdinal}`);
       this.gearAnalysis.reset();
     }
     this.carOrdinal = carDashMessage.carOrdinal;
@@ -164,7 +170,7 @@ export class RaceState {
       this.timeStamp / 1000
     } Lap:${this.lap} Speed:${speedMph}/${maxSpeedMph}mph RPM:${
       this.currentRpm
-    } Gear:${this.gear} accel:${this.accel} brake:${this.brake} torque:${
+    }/${this.maxRpm} Gear:${this.gear} accel:${this.accel} brake:${this.brake} torque:${
       this.torque
     } fan A: ${this.fanA.percentageStrength}%, fan B: ${
       this.fanB.percentageStrength

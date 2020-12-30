@@ -37,6 +37,7 @@ export class GearAnalysis {
   }
 
   reset() {
+    console.log("resetting gear analysis");
     this.timeOfLastGearChange = 0;
     this.hasRecentlyChangeGear = false;
     this.previousGear = 0;
@@ -172,7 +173,7 @@ export class GearAnalysis {
     rpm: number,
     time: number
   ) {
-    if (gear != this.previousGear) {
+    if (gear>=1 && gear != this.previousGear) {
       this.timeOfLastGearChange = time;
 
       this.lastAdviceOnGearUp = -1;

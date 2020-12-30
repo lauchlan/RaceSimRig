@@ -45,6 +45,13 @@ export class IndexedBuffer {
     return val;
   }
 
+  readInt8(): number {
+    const val = this.message.readInt8(this.position);
+    this.position += 1;
+
+    return val;
+  }
+
   readFloatLE(): number {
     const val = this.message.readFloatLE(this.position);
     this.position += 4;

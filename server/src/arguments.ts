@@ -50,6 +50,12 @@ export function getArguments() {
       type: "boolean",
       default: true,
     })
+    .option("p", {
+      alias: "pcars",
+      description: "Enable pcars mode",
+      type: "boolean",
+      default: false,
+    })
     .option("vv", {
       alias: "verbose",
       description: "Verbose output",

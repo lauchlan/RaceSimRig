@@ -10,7 +10,7 @@ import { RaceState } from "./model/raceState";
 
 import { getArguments } from "./arguments";
 
-import { interval } from "rxjs";
+import { interval, merge, Observable } from "rxjs";
 import { map, bufferCount } from "rxjs/operators";
 
 import fs from "fs";
@@ -29,7 +29,8 @@ function init(
   captureLoops: number,
   replayDelay: number,
   performCapture: boolean,
-  enableEcho: boolean
+  enableEcho: boolean,
+  isPCars: boolean
 ) {
   let properties: PropertiesReader.Reader = openPropertiesFile();
   const { udpServerPort, relayPort, relayIp, serialPort } = readProperties(
@@ -51,24 +52,35 @@ function init(
   });
 
   const udpServer = new DatagramServer(udpServerPort, "0.0.0.0");
+  const pCarsUdpServer = new DatagramServer(5606, "0.0.0.0");
 
   console.log("[Server] Using test data:", replayCaptureFile);
-  const buffer$ = replayCaptureFile
-    ? getCaptureStream(replayCaptureFile, replayDelay, captureLoops)
-    : udpServer.datagram$;
+
+  let captureBuffer$: Observable<Buffer>;
 
   if (replayCaptureFile) {
-    buffer$.subscribe({
+    captureBuffer$ = getCaptureStream(
+      replayCaptureFile,
+      replayDelay,
+      captureLoops
+    );
+
+    captureBuffer$.subscribe({
       complete: () => {
         console.log("[Server] Replay complete", raceState.maxX, raceState.maxY);
 
         process.exit();
       },
     });
+  } else {
+    captureBuffer$ = new Observable<Buffer>();
   }
 
+  const buffer$ = udpServer.datagram$;
+  const pCarsBuffer$ = pCarsUdpServer.datagram$;
+
   const captureFile = performCapture
-    ? fs.createWriteStream("capture.bin")
+    ? fs.createWriteStream(`capture.${isPCars ? "pcars" : "bin"}`)
     : null;
 
   buffer$.subscribe((message: Buffer) => {
@@ -76,7 +88,7 @@ function init(
       echoClient.send(message);
     }
 
-    if (captureFile) {
+    if (!isPCars && captureFile) {
       captureFile.write(message);
     }
   });
@@ -85,16 +97,24 @@ function init(
     `[Server] Status output every ${statusInterval}ms, processing every ${updateRate} message`
   );
 
-  buffer$
-    .pipe(
+  merge(
+    captureBuffer$.pipe(
       bufferCount(updateRate),
-      map((buffer) => getCarMessageFromBuffer(buffer))
-    )
-    .subscribe((carDashMessage: CarDashMessage) => {
-      raceState.processNewMessage(carDashMessage);
-      fanControl.write(raceState.fanA.pwmSpeed, raceState.fanB.pwmSpeed);
-      webSocketServer.send(createWebMetrics(raceState));
-    });
+      map((buffer) => getCarMessageFromBuffer(buffer, isPCars))
+    ),
+    buffer$.pipe(
+      bufferCount(updateRate),
+      map((buffer) => getCarMessageFromBuffer(buffer, false))
+    ),
+    pCarsBuffer$.pipe(map((buffer) => getCarMessageFromBuffer([buffer], true)))
+  ).subscribe((carDashMessage: CarDashMessage) => {
+    if (!carDashMessage.isValid) {
+      return;
+    }
+    raceState.processNewMessage(carDashMessage);
+    fanControl.write(raceState.fanA.pwmSpeed, raceState.fanB.pwmSpeed);
+    webSocketServer.send(createWebMetrics(raceState));
+  });
 
   if (enableEcho) {
     echoClient.connect(relayPort, relayIp);
@@ -134,13 +154,17 @@ function createWebMetrics(raceState: RaceState): Object {
   };
 }
 
-function getCarMessageFromBuffer(buffer: Buffer[]) {
+function getCarMessageFromBuffer(buffer: Buffer[], isPCars: boolean) {
   const messageBuffer: IndexedBuffer = new IndexedBuffer(
     buffer.pop() as Buffer
   );
 
   const isHorizon4Format = messageBuffer.length() == 324;
-  const carDashMessage = new CarDashMessage(messageBuffer, isHorizon4Format);
+  const carDashMessage = new CarDashMessage(
+    messageBuffer,
+    isHorizon4Format,
+    isPCars
+  );
 
   return carDashMessage;
 }
@@ -180,5 +204,6 @@ init(
   argv.loops,
   argv.delay,
   argv.capture,
-  argv.enableEcho
+  argv.enableEcho,
+  argv.pcars
 );
