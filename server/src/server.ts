@@ -106,7 +106,10 @@ function init(
       bufferCount(updateRate),
       map((buffer) => getCarMessageFromBuffer(buffer, false))
     ),
-    pCarsBuffer$.pipe(map((buffer) => getCarMessageFromBuffer([buffer], true)))
+    pCarsBuffer$.pipe(
+      bufferCount(updateRate),
+      map((buffer) => getCarMessageFromBuffer(buffer, true))
+    )
   ).subscribe((carDashMessage: CarDashMessage) => {
     if (!carDashMessage.isValid) {
       return;
